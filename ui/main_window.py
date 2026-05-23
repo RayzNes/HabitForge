@@ -1,4 +1,4 @@
-# ui/main_window.py (обновленная версия с настройками)
+# ui/main_window.py (обновленная версия с расширенными настройками)
 
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QHBoxLayout, QWidget
 from PySide6.QtCore import Qt
@@ -9,6 +9,7 @@ from ui.habit_list_widget import HabitListWidget
 from ui.pomodoro_widget import PomodoroWidget
 from ui.stats_widget import StatsWidget
 from ui.reminder_settings_widget import ReminderSettingsWidget
+from ui.settings_widget import SettingsWidget
 
 
 class MainWindow(QMainWindow):
@@ -36,6 +37,7 @@ class MainWindow(QMainWindow):
         self.pomodoro = PomodoroWidget()
         self.stats = StatsWidget(self.session)
         self.reminder_settings = None  # Будет создан после установки сервиса
+        self.settings = None  # Новый виджет настроек
 
         self.stack.addWidget(self.dashboard)
         self.stack.addWidget(self.habits_page)
@@ -48,35 +50,39 @@ class MainWindow(QMainWindow):
         self.setup_sidebar()
 
     def set_reminder_service(self, reminder_service):
-        """Установить сервис напоминаний и создать виджет настроек"""
+        """Установить сервис напоминаний и создать виджеты настроек"""
         self.reminder_service = reminder_service
         self.reminder_settings = ReminderSettingsWidget(self.session, self.reminder_service, self)
+        self.settings = SettingsWidget(self.session, self)
+
         self.stack.addWidget(self.reminder_settings)
+        self.stack.addWidget(self.settings)
 
         # Обновляем меню
         self.update_menu()
 
     def setup_sidebar(self):
-        """Базовое меню без настроек напоминаний"""
+        """Базовое меню"""
         menubar = self.menuBar()
         nav_menu = menubar.addMenu("Навигация")
 
-        nav_menu.addAction("Dashboard", lambda: self.stack.setCurrentWidget(self.dashboard))
-        nav_menu.addAction("Привычки", lambda: self.stack.setCurrentWidget(self.habits_page))
-        nav_menu.addAction("Pomodoro", lambda: self.stack.setCurrentWidget(self.pomodoro))
-        nav_menu.addAction("Статистика", lambda: self.stack.setCurrentWidget(self.stats))
+        nav_menu.addAction("📊 Dashboard", lambda: self.stack.setCurrentWidget(self.dashboard))
+        nav_menu.addAction("✅ Привычки", lambda: self.stack.setCurrentWidget(self.habits_page))
+        nav_menu.addAction("🍅 Pomodoro", lambda: self.stack.setCurrentWidget(self.pomodoro))
+        nav_menu.addAction("📈 Статистика", lambda: self.stack.setCurrentWidget(self.stats))
 
         # Add menu for creating new habits
-        habit_menu = menubar.addMenu("Привычки")
+        habit_menu = menubar.addMenu("➕ Привычки")
         habit_menu.addAction("Добавить привычку", self.add_new_habit)
 
     def update_menu(self):
-        """Обновить меню с настройками напоминаний"""
+        """Обновить меню с настройками"""
         menubar = self.menuBar()
 
-        # Добавляем пункт "Настройки" если его ещё нет
-        settings_menu = menubar.addMenu("⚙ Настройки")
+        # Добавляем пункт "Настройки"
+        settings_menu = menubar.addMenu("⚙️ Настройки")
         settings_menu.addAction("🔔 Напоминания", lambda: self.stack.setCurrentWidget(self.reminder_settings))
+        settings_menu.addAction("🎨 Оформление и язык", lambda: self.stack.setCurrentWidget(self.settings))
 
     def add_new_habit(self):
         from ui.dialogs.habit_dialog import HabitDialog
