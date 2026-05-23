@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
         nav_menu = menubar.addMenu("Навигация")
 
-        nav_menu.addAction("📊 Dashboard", lambda: self.stack.setCurrentWidget(self.dashboard))
+        nav_menu.addAction("🌳 Древо привычек", lambda: self.stack.setCurrentWidget(self.dashboard))
         nav_menu.addAction("✅ Привычки", lambda: self.stack.setCurrentWidget(self.habits_page))
         nav_menu.addAction("🍅 Pomodoro", lambda: self.stack.setCurrentWidget(self.pomodoro))
         nav_menu.addAction("📈 Статистика", lambda: self.stack.setCurrentWidget(self.stats))
@@ -74,6 +74,10 @@ class MainWindow(QMainWindow):
         # Add menu for creating new habits
         habit_menu = menubar.addMenu("➕ Привычки")
         habit_menu.addAction("Добавить привычку", self.add_new_habit)
+
+        # Отображение подсказки
+        tip_menu = menubar.addMenu("💡 Совет дня")
+        tip_menu.addAction("Нажмите на дерево, чтобы увидеть свой прогресс!")
 
     def update_menu(self):
         """Обновить меню с настройками"""
