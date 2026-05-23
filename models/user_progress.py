@@ -3,7 +3,6 @@ from sqlalchemy import Column, Integer, Float, DateTime
 
 from models.base import Base
 
-
 class UserProgress(Base):
     __tablename__ = "user_progress"
 
@@ -28,3 +27,4 @@ class UserProgress(Base):
 
     def progress_percentage(self) -> float:
         return (self.xp / self._xp_for_next_level()) * 100 if self.level > 0 else 0
+

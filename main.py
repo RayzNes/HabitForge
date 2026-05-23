@@ -1,3 +1,5 @@
+# main.py (обновленная версия)
+
 import sys
 import logging
 from PySide6.QtWidgets import QApplication, QStyleFactory
@@ -7,6 +9,7 @@ from PySide6.QtCore import Qt
 from database import init_db
 from ui.main_window import MainWindow
 from data.seed import seed_demo_data
+from utils.reminder import ReminderService
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -66,6 +69,17 @@ def apply_dark_theme(app):
             border-radius: 4px;
             padding: 6px;
         }
+        QGroupBox {
+            border: 1px solid #555555;
+            border-radius: 6px;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 5px 0 5px;
+        }
     """)
 
 
@@ -76,8 +90,23 @@ def main():
     app = QApplication(sys.argv)
     apply_dark_theme(app)
 
+    # Создаём окно (оно создаст сессию)
     window = MainWindow()
+
+    # Создаём сервис напоминаний с той же сессией
+    reminder_service = ReminderService(window.session)
+    reminder_service.start()
+
+    # Передаём сервис в окно
+    window.set_reminder_service(reminder_service)
+
     window.showMaximized()
+
+    # Останавливаем сервис при закрытии
+    def on_close():
+        reminder_service.stop()
+
+    app.aboutToQuit.connect(on_close)
 
     sys.exit(app.exec())
 
