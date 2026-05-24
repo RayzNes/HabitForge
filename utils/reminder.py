@@ -1,8 +1,8 @@
-# utils/reminder.py
+# utils/reminder.py (исправленная версия)
 
 import threading
 import time
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timezone
 from typing import List, Dict, Any
 import logging
 from plyer import notification
@@ -10,7 +10,7 @@ from plyer import notification
 from sqlalchemy.orm import Session
 from models.habit import Habit, Frequency
 from models.completion import HabitCompletion
-from models.user_settings import UserSettings  # создадим позже
+from models.user_settings import UserSettings
 
 
 class ReminderService:
@@ -23,6 +23,7 @@ class ReminderService:
         self.thread = None
         self.reminders_enabled = True
         self.reminder_time = dt_time(20, 0)  # 20:00 по умолчанию
+        self._stop_event = threading.Event()  # Добавляем событие для остановки
 
     def start(self):
         """Запустить сервис напоминаний в фоновом потоке"""
@@ -30,6 +31,7 @@ class ReminderService:
             return
 
         self.running = True
+        self._stop_event.clear()
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
         logging.info("Reminder service started")
@@ -37,17 +39,18 @@ class ReminderService:
     def stop(self):
         """Остановить сервис напоминаний"""
         self.running = False
-        if self.thread:
-            self.thread.join(timeout=2)
+        self._stop_event.set()
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=3)
         logging.info("Reminder service stopped")
 
     def _run(self):
         """Основной цикл проверки напоминаний"""
         last_daily_check = None
 
-        while self.running:
+        while self.running and not self._stop_event.is_set():
             try:
-                current_time = datetime.now()
+                current_time = datetime.now(timezone.utc)
 
                 # Проверка дневных напоминаний (каждый час)
                 self._check_habits_reminder()
@@ -60,21 +63,24 @@ class ReminderService:
                         # Проверяем, наступило ли время напоминания
                         reminder_datetime = datetime.combine(
                             current_time.date(),
-                            self.reminder_time
+                            self.reminder_time,
+                            tzinfo=timezone.utc
                         )
 
                         if current_time >= reminder_datetime:
                             self._send_daily_reminder()
                             last_daily_check = current_time
 
-                time.sleep(self.check_interval)
+                # Используем _stop_event.wait() вместо time.sleep()
+                self._stop_event.wait(timeout=self.check_interval)
 
             except Exception as e:
                 logging.error(f"Error in reminder service: {e}")
-                time.sleep(self.check_interval)
+                self._stop_event.wait(timeout=self.check_interval)
 
     def _check_habits_reminder(self):
         """Проверить привычки, требующие выполнения сегодня"""
+        db = None
         try:
             # Получаем новую сессию для потока
             from database import SessionLocal
@@ -92,14 +98,15 @@ class ReminderService:
             if habits_due:
                 self._send_habits_reminder(habits_due)
 
-            db.close()
-
         except Exception as e:
             logging.error(f"Error checking habits due: {e}")
+        finally:
+            if db:
+                db.close()
 
     def _is_habit_due_today(self, habit: Habit, session: Session) -> bool:
         """Проверить, должна ли привычка быть выполнена сегодня"""
-        today = datetime.now().date()
+        today = datetime.now(timezone.utc).date()
 
         if habit.frequency == Frequency.DAILY:
             return True
@@ -107,7 +114,7 @@ class ReminderService:
         elif habit.frequency == Frequency.WEEKLY:
             if habit.days_of_week:
                 weekdays = [int(d.strip()) for d in habit.days_of_week.split(',') if d.strip()]
-                today_weekday = today.weekday() + 1  # Monday=1, Sunday=7
+                today_weekday = today.isoweekday()  # Monday=1, Sunday=7
                 return today_weekday in weekdays
             return True  # По умолчанию - каждый день
 
@@ -115,7 +122,8 @@ class ReminderService:
 
     def _is_habit_completed_today(self, habit_id: int, session: Session) -> bool:
         """Проверить, выполнена ли привычка сегодня"""
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        now = datetime.now(timezone.utc)
+        today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
         completion = session.query(HabitCompletion).filter(
             HabitCompletion.habit_id == habit_id,
@@ -147,12 +155,13 @@ class ReminderService:
 
     def _send_daily_reminder(self):
         """Отправить ежедневное итоговое напоминание"""
+        db = None
         try:
             from database import SessionLocal
             db = SessionLocal()
 
-            today = datetime.now().date()
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            now = datetime.now(timezone.utc)
+            today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
             # Получаем все привычки
             habits = db.query(Habit).all()
@@ -182,10 +191,11 @@ class ReminderService:
                         timeout=10
                     )
 
-            db.close()
-
         except Exception as e:
             logging.error(f"Error sending daily reminder: {e}")
+        finally:
+            if db:
+                db.close()
 
     def send_test_notification(self):
         """Отправить тестовое уведомление"""

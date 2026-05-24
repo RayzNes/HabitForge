@@ -1,4 +1,6 @@
-from datetime import datetime
+# models/habit.py (исправленная версия)
+
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 import enum
@@ -21,7 +23,7 @@ class Habit(Base):
     category = Column(String(50), default="Общее")
     frequency = Column(SQLEnum(Frequency), default=Frequency.DAILY)
     days_of_week = Column(String(20), default="")  # например "1,2,3,4,5"
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     completions = relationship("HabitCompletion", back_populates="habit", cascade="all, delete-orphan")
 

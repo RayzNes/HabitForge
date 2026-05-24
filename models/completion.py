@@ -1,4 +1,6 @@
-from datetime import datetime
+# models/completion.py (исправленная версия)
+
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
@@ -10,7 +12,7 @@ class HabitCompletion(Base):
 
     id = Column(Integer, primary_key=True)
     habit_id = Column(Integer, ForeignKey("habits.id"), nullable=False)
-    date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    date = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     completed = Column(Boolean, default=True)
     note = Column(String(500), default="")
 

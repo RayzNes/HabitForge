@@ -1,7 +1,10 @@
-from datetime import datetime
+# models/user_progress.py (исправленная версия)
+
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, Float, DateTime
 
 from models.base import Base
+
 
 class UserProgress(Base):
     __tablename__ = "user_progress"
@@ -10,12 +13,12 @@ class UserProgress(Base):
     level = Column(Integer, default=1)
     xp = Column(Float, default=0.0)
     total_xp_earned = Column(Float, default=0.0)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def add_xp(self, amount: float):
         self.xp += amount
         self.total_xp_earned += amount
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
         # Level up logic
         while self.xp >= self._xp_for_next_level():
